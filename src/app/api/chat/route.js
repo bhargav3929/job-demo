@@ -5,7 +5,7 @@ const groq = new OpenAI({
     apiKey: process.env.GROQ_API_KEY,
 });
 
-const WEBHOOK_URL = 'https://n8n.srv1136844.hstgr.cloud/webhook/3b3fb564-a5c5-4041-9840-30492acfc959';
+const WEBHOOK_URL = 'https://n8n-production-cf47.up.railway.app/webhook/08f25dc8-a3e7-467d-8d3a-2fb0fb72898e';
 
 // System prompt to guide the AI
 const SYSTEM_PROMPT = `
@@ -102,42 +102,29 @@ export async function POST(req) {
                         cleanResponse = aiResponse.replace(jsonStr, '').trim();
                     }
 
-                    // Call Webhook
-                    console.log("Sending to Webhook (GET):", WEBHOOK_URL);
+                    // Fire webhook silently — never block or affect the frontend response
+                    const webhookPayload = {
+                        name: jsonData.collected_data.name,
+                        email: jsonData.collected_data.email,
+                        company: jsonData.collected_data.company || "",
+                        use_case: jsonData.collected_data.use_case || "",
+                        captured_at: new Date().toISOString(),
+                    };
 
-                    // Create Query Params for GET request (matching n8n config)
-                    const params = new URLSearchParams();
-                    params.append('name', jsonData.collected_data.name);
-                    params.append('email', jsonData.collected_data.email);
-                    params.append('company', jsonData.collected_data.company || "");
-                    params.append('use_case', jsonData.collected_data.use_case || "");
+                    console.log("Firing webhook (POST):", WEBHOOK_URL);
+                    console.log("Payload:", webhookPayload);
 
-                    const webhookUrlWithParams = `${WEBHOOK_URL}?${params.toString()}`;
+                    // Fire-and-forget — don't await, don't let failure touch the user
+                    fetch(WEBHOOK_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(webhookPayload),
+                    })
+                        .then(res => console.log("Webhook responded:", res.status))
+                        .catch(err => console.error("Webhook error (silent):", err.message));
 
-                    const webhookRes = await fetch(webhookUrlWithParams, {
-                        method: 'GET',
-                        headers: { 'Content-Type': 'application/json' }
-                    });
-
-                    console.log("Webhook Status:", webhookRes.status);
-
-                    if (webhookRes.ok) {
-                        const webhookData = await webhookRes.json();
-                        console.log("Webhook Response Body:", webhookData);
-
-                        // Extract link
-                        let redirectUrl = webhookData.url || webhookData.link || webhookData.redirect;
-                        if (!redirectUrl && typeof webhookData === 'string' && webhookData.startsWith('http')) {
-                            redirectUrl = webhookData;
-                        }
-
-                        return new Response(JSON.stringify({
-                            content: cleanResponse,
-                            redirectUrl: redirectUrl
-                        }), { status: 200, headers });
-                    } else {
-                        console.error("Webhook failed with status:", webhookRes.status);
-                    }
+                    // Return the clean response (JSON block stripped) to the frontend
+                    return new Response(JSON.stringify({ content: cleanResponse }), { status: 200, headers });
                 }
             } catch (e) {
                 console.error("Error parsing extract JSON or calling webhook", e);
