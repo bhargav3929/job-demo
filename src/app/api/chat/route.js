@@ -102,26 +102,28 @@ export async function POST(req) {
                         cleanResponse = aiResponse.replace(jsonStr, '').trim();
                     }
 
-                    // Fire webhook silently — never block or affect the frontend response
-                    const webhookPayload = {
+                    // Fire webhook silently via GET (matches n8n webhook config)
+                    const params = new URLSearchParams({
                         name: jsonData.collected_data.name,
                         email: jsonData.collected_data.email,
                         company: jsonData.collected_data.company || "",
                         use_case: jsonData.collected_data.use_case || "",
                         captured_at: new Date().toISOString(),
-                    };
+                    });
+                    const webhookWithParams = `${WEBHOOK_URL}?${params.toString()}`;
 
-                    console.log("Firing webhook (POST):", WEBHOOK_URL);
-                    console.log("Payload:", webhookPayload);
+                    console.log("[WEBHOOK] All 4 fields collected — firing GET webhook");
+                    console.log("[WEBHOOK] URL:", webhookWithParams);
+                    console.log("[WEBHOOK] Data:", JSON.stringify(jsonData.collected_data));
 
                     // Fire-and-forget — don't await, don't let failure touch the user
-                    fetch(WEBHOOK_URL, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(webhookPayload),
-                    })
-                        .then(res => console.log("Webhook responded:", res.status))
-                        .catch(err => console.error("Webhook error (silent):", err.message));
+                    fetch(webhookWithParams, { method: 'GET' })
+                        .then(res => {
+                            console.log("[WEBHOOK] Response status:", res.status);
+                            return res.text();
+                        })
+                        .then(body => console.log("[WEBHOOK] Response body:", body))
+                        .catch(err => console.error("[WEBHOOK] Error (silent):", err.message));
 
                     // Return the clean response (JSON block stripped) to the frontend
                     return new Response(JSON.stringify({ content: cleanResponse }), { status: 200, headers });
