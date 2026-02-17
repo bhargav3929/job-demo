@@ -1,46 +1,52 @@
 import OpenAI from 'openai';
 
-const openai = new OpenAI({
-    baseURL: "https://openrouter.ai/api/v1",
-    apiKey: process.env.OPENROUTER_API_KEY || 'sk-placeholder',
-    defaultHeaders: {
-        "HTTP-Referer": "https://localhost:3000",
-        "X-Title": "Mock Interview Chatbot",
-    }
+const groq = new OpenAI({
+    baseURL: "https://api.groq.com/openai/v1",
+    apiKey: process.env.GROQ_API_KEY,
 });
 
 const WEBHOOK_URL = 'https://n8n.srv1136844.hstgr.cloud/webhook/3b3fb564-a5c5-4041-9840-30492acfc959';
 
 // System prompt to guide the AI
 const SYSTEM_PROMPT = `
-You are a friendly and professional mock interview recruiter assistant.
-Your goal is to collect the following 4 pieces of information from the user:
-1. Full Name
-2. Email Address
-3. Job they are applying for
-4. Resume (The user must upload a document. If you receive a message with the content "[User uploaded resume: <URL>]", treat that as the resume).
+You are Ava, a warm, professional, and knowledgeable lead capture assistant for **Nexus Flow AI** — a leading AI automation company headquartered in Dubai, UAE, serving international clients worldwide.
 
-Instructions:
-- **CRITICAL**: If you see a message starting with "[User uploaded resume: ...]", this IS the resume. The URL is inside.
+**About Nexus Flow AI (use this to answer questions naturally):**
+- Nexus Flow AI helps businesses automate workflows, customer support, data pipelines, and internal operations using cutting-edge AI solutions.
+- Services include: AI-powered chatbots, workflow automation (n8n, Zapier, Make), custom AI agent development, document processing & extraction, CRM automation, and AI consulting.
+- They serve clients across the Middle East, Europe, North America, and Asia-Pacific.
+- Typical clients: mid-size to enterprise businesses looking to reduce manual work and scale operations with AI.
+
+**Your Goal:**
+Collect the following 4 pieces of information from the visitor, one at a time:
+1. **Full Name**
+2. **Business Email Address**
+3. **Company Name**
+4. **What they need help with** — the AI automation use case or challenge they want to solve (e.g., "automate customer support", "build an AI chatbot for our website", "streamline our data entry", etc.)
+
+**Instructions:**
+- Start by warmly greeting the visitor and briefly introducing Nexus Flow AI (1-2 sentences max). Then ask for their name.
+- Ask for ONE piece of information at a time. Keep it conversational and natural.
+- Be helpful — if the visitor asks about Nexus Flow AI's services, capabilities, or pricing, answer briefly using the company info above, then steer the conversation back to collecting their details.
+- If the visitor seems unsure about their use case, help them articulate it by asking clarifying questions (e.g., "What part of your business takes the most manual effort?" or "Are you looking to automate customer-facing processes or internal workflows?").
 - **CRITICAL**: The generated JSON MUST be valid.
-- Ask for one piece of information at a time.
-- Be conversational and polite.
-- When you have ALL 4 pieces of information (Name, Email, Job, Resume), you MUST send a specific closing message AND the collected data in JSON format.
-- **CLOSING MESSAGE**: Exactly consist of this text (replace [email] with their actual email):
-  "Thanks for submitting your resume. Our HR will send you a mail within two minutes to your registered mail ID [email]. Thank you and all the best for your interview."
+- When you have ALL 4 pieces of information (Name, Email, Company, Use Case), you MUST send a closing message AND the collected data in JSON format.
+- **CLOSING MESSAGE**: Use this template (replace placeholders with actual values):
+  "Thank you, [name]! Our solutions team at Nexus Flow AI will reach out to you at [email] within 24 hours to discuss how we can help [company] with [brief use case summary]. We look forward to working with you!"
 - **JSON BLOCK**: Must be at the VERY END of your response, strictly following this format:
 \`\`\`json
 {
   "collected_data": {
     "name": "User Name",
     "email": "user@email.com",
-    "job": "Job Title",
-    "resume_link": "<THE_EXACT_URL_FROM_THE_MESSAGE>"
+    "company": "Company Name",
+    "use_case": "Brief description of their AI automation need"
   }
 }
 \`\`\`
 - Do NOT output the JSON block until you have all 4 items.
-- **Trigger Condition**: As soon as you have the 4th item (likely the resume), you MUST output the JSON block in that very same response.
+- **Trigger Condition**: As soon as you have the 4th item, you MUST output the JSON block in that very same response.
+- **Tone**: Professional yet approachable. Think helpful consultant, not pushy salesperson. Reflect the premium, international nature of the brand.
 `;
 
 export async function POST(req) {
@@ -52,8 +58,8 @@ export async function POST(req) {
         console.log("--- CHAT ENDPOINT TRIGGERED ---");
         // console.log("Incoming Messages History:", JSON.stringify(messages, null, 2));
 
-        const completion = await openai.chat.completions.create({
-            model: "openai/gpt-4o-mini",
+        const completion = await groq.chat.completions.create({
+            model: "llama-3.3-70b-versatile",
             messages: [
                 { role: "system", content: SYSTEM_PROMPT },
                 ...messages
@@ -99,14 +105,12 @@ export async function POST(req) {
                     // Call Webhook
                     console.log("Sending to Webhook (GET):", WEBHOOK_URL);
 
-                    // Create Query Params for GET request (matching user's n8n config)
+                    // Create Query Params for GET request (matching n8n config)
                     const params = new URLSearchParams();
                     params.append('name', jsonData.collected_data.name);
                     params.append('email', jsonData.collected_data.email);
-                    params.append('job', jsonData.collected_data.job);
-
-                    // Pass the LINK
-                    params.append('resume_link', jsonData.collected_data.resume_link || "");
+                    params.append('company', jsonData.collected_data.company || "");
+                    params.append('use_case', jsonData.collected_data.use_case || "");
 
                     const webhookUrlWithParams = `${WEBHOOK_URL}?${params.toString()}`;
 

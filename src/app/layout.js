@@ -12,8 +12,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Mock Interview Onboarding",
-  description: "Chatbot for mock interview onboarding",
+  title: "Nexus Flow AI — Let's Talk Automation",
+  description: "Lead capture chatbot for Nexus Flow AI, a Dubai-based AI automation company",
 };
 
 export default function RootLayout({ children }) {

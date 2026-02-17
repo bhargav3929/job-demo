@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 
 export default function AIChatCard({ className }) {
     const [messages, setMessages] = useState([
-        { role: "assistant", content: "👋 Hi! am Pragathi. I'm here to get you set up for your mock interview. To start, could you please tell me your full name?" },
+        { role: "assistant", content: "Hi there! I'm Ava from Nexus Flow AI. We help businesses worldwide automate and scale with AI. I'd love to learn a bit about you — could you start by telling me your name?" },
     ]);
     const [input, setInput] = useState("");
     const [isTyping, setIsTyping] = useState(false);
@@ -68,7 +68,7 @@ export default function AIChatCard({ className }) {
             if (data.redirectUrl) {
                 setMessages((prev) => [...prev, {
                     role: "assistant",
-                    content: "Great! I've collected everything. Click below to start your interview.",
+                    content: "Thank you! Our team will be in touch shortly. In the meantime, feel free to explore more about our solutions.",
                     actionLink: data.redirectUrl
                 }]);
             } else {
@@ -101,11 +101,11 @@ export default function AIChatCard({ className }) {
             const uploadData = await uploadRes.json();
 
             if (uploadData.fileUrl) {
-                const hiddenContent = `[User uploaded resume: ${uploadData.fileUrl}]`;
+                const hiddenContent = `[User uploaded document: ${uploadData.fileUrl}]`;
 
                 setMessages(prev => {
                     const newMsgs = [...prev];
-                    newMsgs[newMsgs.length - 1] = { role: 'user', content: `📄 Uploaded resume: ${file.name}` };
+                    newMsgs[newMsgs.length - 1] = { role: 'user', content: `Uploaded: ${file.name}` };
                     return newMsgs;
                 });
 
@@ -122,7 +122,7 @@ export default function AIChatCard({ className }) {
                 if (data.redirectUrl) {
                     setMessages(prev => [...prev, {
                         role: 'assistant',
-                        content: `Received your resume! I have everything now.`,
+                        content: `Got it, thanks! Our team will follow up with you shortly.`,
                         actionLink: data.redirectUrl
                     }]);
                 } else {
@@ -183,7 +183,7 @@ export default function AIChatCard({ className }) {
 
                 {/* Header */}
                 <div className="ai-chat-header">
-                    <h2>👋 Welcome</h2>
+                    <h2>Nexus Flow AI</h2>
                 </div>
 
                 {/* Messages */}
@@ -204,7 +204,7 @@ export default function AIChatCard({ className }) {
                                 {msg.actionLink && (
                                     <div className="action-link-container">
                                         <a href={msg.actionLink} className="action-link">
-                                            Start Interview →
+                                            Explore Our Solutions →
                                         </a>
                                     </div>
                                 )}
@@ -246,7 +246,7 @@ export default function AIChatCard({ className }) {
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isUploading || isTyping}
                         className="ai-chat-attach-btn"
-                        title="Upload Resume"
+                        title="Attach a file"
                     >
                         {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Paperclip size={16} />}
                     </button>
